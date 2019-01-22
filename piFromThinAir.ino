@@ -1,5 +1,5 @@
 /*
- * This sample code shows...
+ * Compute pi from thin air.
  * 
  * Author: Frédéric HUBIN (frederic.hubin@gmail.com)
  */
@@ -125,12 +125,7 @@ void bufferLoop () {
       // Extract b and c:
       float b = getFloat(randomBit);
       float c = getFloat(randomBit + 3);
-      
-      // Log b & c:
-      logPrefix();
 
-      Serial.println("");
-      
       // Is the sample inside the pie? If yes, increase the inner sample counter:
       innerSample += (b * b) + (c * c) < 1.0 ? 1 : 0;
       
