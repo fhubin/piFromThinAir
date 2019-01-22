@@ -87,8 +87,8 @@ void setup () {
   // Setup the interrupts:
   setupInterrupts();
 
-  // Log end of the setup:
-  digitalWrite(LED, LOW);    // switch off the led
+  // Switch off the led:
+  digitalWrite(LED, LOW);    
 
   // Log end of the setup:
   log("Setup done");  
