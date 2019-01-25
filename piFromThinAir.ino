@@ -20,6 +20,11 @@
  * Latches definition:
  */
 #define LED_LATCH         0
+
+
+/*
+ * Buffer size definition:
+ */
 #define BUFFER_SIZE      32
 
 /*
@@ -95,6 +100,14 @@ void setup () {
 }
 
 //
+void ledLoop () {
+
+  if(checkLatch(LED_LATCH)) {
+    digitalWrite(LED, LOW);    // switch off the led
+  }
+}
+
+//
 void bufferLoop () {
 
   // Check if there is any data to process:
@@ -107,14 +120,16 @@ void bufferLoop () {
     if(lastDuration > timestamps[readerOffset] - lastTimestamp) {        
       // We add a '1':
       randomBit[arrayIndex] |= bit(bitIndex);       
+      randomBitIndex++;
     }
-    else {                                 
+    else if(lastDuration < timestamps[readerOffset] - lastTimestamp) {        
       // We add a '0':           
       randomBit[arrayIndex] &= ~bit(bitIndex); 
+      randomBitIndex++;
     }
-
-    // Increase the bit index:
-    randomBitIndex++;
+    else {
+      // NOP
+    }
 
     // Do we have enough bit?
     if (randomBitIndex == 48) {
@@ -127,15 +142,16 @@ void bufferLoop () {
       float c = getFloat(randomBit + 3);
 
       // Is the sample inside the pie? If yes, increase the inner sample counter:
-      innerSample += (b * b) + (c * c) < 1.0 ? 1 : 0;
+      innerSample += (b * b) + (c * c) <= 1.0 ? 1 : 0;
       
       // Increase the total sample counter:
       totalSample++;
 
       // Compute pi:
-      float pi = 4 * (float)innerSample / totalSample;
+      float pi = 4 * (float) innerSample / totalSample;
 
       // Log Pi:
+      /*
       logPrefix();
       Serial.print("b = ");
       Serial.print(b, 4);
@@ -144,6 +160,15 @@ void bufferLoop () {
       Serial.print(" ; pi = ");
       Serial.print(pi, 4);
       Serial.println("");
+      */
+
+      Serial.print(b, 4);
+      Serial.print(";");
+      Serial.print(c, 4);
+      Serial.print(";");
+      Serial.print(pi, 4);
+      Serial.println("");
+            
     }
 
     // Update the last duration and timestamp :
@@ -177,7 +202,7 @@ float getFloat (byte * randomBitArray) {
   base += b << 8;    
   base += c << 16;
 
-  return base / ((float)(0x1000000));  
+  return base / ((float)(0xFFFFFF));  
 }
 
 // Main loop:
@@ -185,5 +210,8 @@ void loop () {
 
   // Delegate to the buffer loop:
   bufferLoop();
+
+  // Delegate to the led loop:
+  ledLoop();
   
 }
