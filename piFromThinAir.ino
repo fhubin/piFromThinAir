@@ -1,35 +1,10 @@
 /*
  * Compute pi from thin air.
- * 
  * Author: Frédéric HUBIN (frederic.hubin@gmail.com)
  */
+#define GEIGER_TUBE  2
+#define BUFFER_SIZE 32
 
-/*
- * Includes:
- */
-#include <xo3labs_logs.h>
-#include <xo3labs_latch.h>
-
-/*
- * Input/Output defines:
- */
-#define LED           4
-#define GEIGER_TUBE   2 
-
-/*
- * Latches definition:
- */
-#define LED_LATCH         0
-
-
-/*
- * Buffer size definition:
- */
-#define BUFFER_SIZE      32
-
-/*
- * Global variables:
- */
 byte readerOffset = 0;
 volatile byte writerOffset = 0;
 
@@ -38,14 +13,11 @@ byte randomBit[6] = {0, 0, 0, 0, 0, 0};
 
 unsigned long lastDuration = 0;
 unsigned long lastTimestamp = 0;
-unsigned long timestamps[BUFFER_SIZE];
+volatile unsigned long timestamps[BUFFER_SIZE];
 
 unsigned long innerSample = 0;
 unsigned long totalSample = 0;
 
-/*
- * Code:
- */
 void tubeImpulse () {
 
   // Store the pulse time:
@@ -57,74 +29,40 @@ void tubeImpulse () {
   }
 }
 
-void setupPinModes () {
-  
-  // Log beginning of the led pin mode setup:
-  log("Set pin mode...");
-  
-  // Set the pin modes for the leds:
-  pinMode(LED, OUTPUT);
-  pinMode(GEIGER_TUBE, INPUT);
-
-  // Log end of the led pin mode setup:
-  log("Pin mode setup done!");  
-}
-
-void setupInterrupts () {
-  interrupts();                                                       
-  attachInterrupt(digitalPinToInterrupt(GEIGER_TUBE), tubeImpulse, FALLING); 
-}
-
 void setup () {
 
-  // Set serial speed:
+  //
   Serial.begin(115200);
 
-  // Log beginning of the setup:
-  log("Start setup 'Pi from thin air'...");
-
-  // Set the pin modes:
-  setupPinModes();
-
-  // Setup the latches:
-  setupLatches();
+  //
+  pinMode(GEIGER_TUBE, INPUT);
 
   // Setup the interrupts:
-  setupInterrupts();
+  interrupts();
+  attachInterrupt(digitalPinToInterrupt(GEIGER_TUBE), tubeImpulse, FALLING);
 
-  // Switch off the led:
-  digitalWrite(LED, LOW);    
-
-  // Log end of the setup:
-  log("Setup done");  
-}
-
-//
-void ledLoop () {
-
-  if(checkLatch(LED_LATCH)) {
-    digitalWrite(LED, LOW);    // switch off the led
-  }
 }
 
 //
 void bufferLoop () {
 
-  // Check if there is any data to process:
-  if(readerOffset != writerOffset) {
+    // Check if there is any data to process:
+    if(readerOffset == writerOffset) {
+        return;
+    }
 
     unsigned short arrayIndex = randomBitIndex / 8;
     unsigned short bitIndex = randomBitIndex % 8;
-    
+
     // Add one more bit to my randomBit:
-    if(lastDuration > timestamps[readerOffset] - lastTimestamp) {        
+    if(lastDuration > timestamps[readerOffset] - lastTimestamp) {
       // We add a '1':
-      randomBit[arrayIndex] |= bit(bitIndex);       
+      randomBit[arrayIndex] |= bit(bitIndex);
       randomBitIndex++;
     }
-    else if(lastDuration < timestamps[readerOffset] - lastTimestamp) {        
-      // We add a '0':           
-      randomBit[arrayIndex] &= ~bit(bitIndex); 
+    else if(lastDuration < timestamps[readerOffset] - lastTimestamp) {
+      // We add a '0':
+      randomBit[arrayIndex] &= ~bit(bitIndex);
       randomBitIndex++;
     }
     else {
@@ -143,7 +81,7 @@ void bufferLoop () {
 
       // Is the sample inside the pie? If yes, increase the inner sample counter:
       innerSample += (b * b) + (c * c) <= 1.0 ? 1 : 0;
-      
+
       // Increase the total sample counter:
       totalSample++;
 
@@ -151,24 +89,8 @@ void bufferLoop () {
       float pi = 4 * (float) innerSample / totalSample;
 
       // Log Pi:
-      /*
-      logPrefix();
-      Serial.print("b = ");
-      Serial.print(b, 4);
-      Serial.print(" ; c = ");
-      Serial.print(c, 4);
-      Serial.print(" ; pi = ");
       Serial.print(pi, 4);
       Serial.println("");
-      */
-
-      Serial.print(b, 4);
-      Serial.print(";");
-      Serial.print(c, 4);
-      Serial.print(";");
-      Serial.print(pi, 4);
-      Serial.println("");
-            
     }
 
     // Update the last duration and timestamp :
@@ -180,14 +102,7 @@ void bufferLoop () {
 
     // Reset the reader offset to the head if required:
     readerOffset = readerOffset == BUFFER_SIZE ? 0 : readerOffset;
-         
-    setLatchIn(LED_LATCH, 50);
-    digitalWrite(LED, HIGH);    // switch on the led  
-  }
 
-  if(checkLatch(LED_LATCH)) {
-    digitalWrite(LED, LOW);    // switch off the led
-  }
 }
 
 float getFloat (byte * randomBitArray) {
@@ -211,7 +126,4 @@ void loop () {
   // Delegate to the buffer loop:
   bufferLoop();
 
-  // Delegate to the led loop:
-  ledLoop();
-  
 }
